@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Bingo - Real-time P2P Bingo Game</title>
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="Multiplayer Bingo - Real-time P2P Bingo Game">
+    <meta name="description" content="Play Bingo online with friends in real-time using P2P technology. No registration required, create a room and share the code to start playing!">
+    <meta name="keywords" content="multiplayer bingo, online bingo, p2p game, real-time bingo, browser game, free bingo game">
+    <meta name="author" content="Bilge Ozan Per">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bilgeozan.com/bingo">
+    <meta property="og:title" content="Multiplayer Bingo - Real-time P2P Game">
+    <meta property="og:description" content="Play Bingo online with friends in real-time. No registration required, create a room and share the code to start playing!">
+    <meta property="og:image" content="https://bilgeozan.com/bingo/favicon/og-image.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://bilgeozan.com/bingo">
+    <meta property="twitter:title" content="Multiplayer Bingo - Real-time P2P Game">
+    <meta property="twitter:description" content="Play Bingo online with friends in real-time. No registration required, create a room and share the code to start playing!">
+    <meta property="twitter:image" content="https://bilgeozan.com/bingo/bingo.png">
+    
+    <!-- Theme Color for Mobile Browsers -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-TileColor" content="#667eea">
+    
+    <!-- Mobile App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Multiplayer Bingo">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #2d3748;
+        }
+        .container {
+            max-width: 1000px;
+            padding: 15px;
+        }
+        .bingo-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 20px 10px;
+            margin: 20px auto;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-x: auto;
+        }
+        .number-cell {
+            width: 65px;
+            height: 65px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 6px;
+            transition: all 0.4s ease;
+            cursor: default;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            color: #4a5568;
+        }
+        .marked {
+            background: linear-gradient(145deg, #f6e05e, #ed8936);
+            color: white;
+            border: none;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(237, 137, 54, 0.2);
+        }
+        .last-number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+            position: relative;
+        }
+        .number-animation {
+            animation: numberPulse 0.15s ease-in-out;
+        }
+        @keyframes numberPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .draw-animation-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .draw-animation {
+            font-size: 8rem;
+            font-weight: 800;
+            color: white;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            animation: numberPulse 0.15s ease-in-out infinite;
+        }
+        .final-number {
+            animation: finalNumberReveal 0.5s ease-out;
+        }
+        @keyframes finalNumberReveal {
+            0% { transform: scale(1.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        #connectionInfo {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .player-count {
+            font-size: 1.2rem;
+            color: #2c7a7b;
+            margin-bottom: 15px;
+            padding: 10px 20px;
+            background: rgba(44, 122, 123, 0.1);
+            border-radius: 10px;
+            display: inline-block;
+        }
+        #errorMessage {
+            color: #c53030;
+            margin-top: 15px;
+            display: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            background: rgba(197, 48, 48, 0.1);
+        }
+        .connection-status {
+            padding: 10px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .connected {
+            background: linear-gradient(to right, #84fab0, #8fd3f4);
+            color: #234e52;
+        }
+        .disconnected {
+            background: linear-gradient(to right, #ff9a9e, #fad0c4);
+            color: #742a2a;
+        }
+        .drawn-numbers {
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .drawn-number-item {
+            display: inline-flex;
+            width: 45px;
+            height: 45px;
+            margin: 6px;
+            background: linear-gradient(145deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #4a5568;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .drawn-number-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+        .drawn-numbers-title {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .btn {
+            padding: 12px 30px;
+            font-weight: 600;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            border: none;
+            box-shadow: 0 4px 15px rgba(132, 250, 176, 0.4);
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(132, 250, 176, 0.6);
+        }
+        .input-group .form-control {
+            border-radius: 12px 0 0 12px;
+            padding: 12px 20px;
+            font-size: 1rem;
+            border: 2px solid #e2e8f0;
+        }
+        .input-group .btn {
+            border-radius: 0 12px 12px 0;
+        }
+        h1.display-4 {
+            color: white;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h3 {
+            color: #4a5568;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .room-info {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1.5rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin: 0.5rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        .room-info .label {
+            font-weight: 600;
+            color: #4a5568;
+            margin-right: 0.5rem;
+        }
+        .room-info .value {
+            font-weight: 800;
+            color: #2c7a7b;
+            letter-spacing: 1px;
+            font-size: 1.2rem;
+        }
+        .game-info {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem;
+        }
+        .game-started #connectionInfo {
+            display: none !important;
+        }
+        .game-started #hostControls {
+            display: none !important;
+        }
+        .game-started.is-host #hostControls {
+            display: flex !important;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .game-started .card {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            .bingo-card {
+                padding: 10px 5px;
+            }
+            .number-cell {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2rem;
+                margin: 3px;
+                border-radius: 10px;
+            }
+            .last-number {
+                font-size: 2.5rem;
+            }
+            h1.display-4 {
+                font-size: 2rem;
+            }
+            .input-group {
+                width: 90% !important;
+            }
+            .btn {
+                padding: 8px 20px;
+                font-size: 0.9rem;
+            }
+            .drawn-numbers {
+                padding: 15px;
+            }
+            .drawn-number-item {
+                width: 35px;
+                height: 35px;
+                font-size: 0.9rem;
+                margin: 3px;
+            }
+            .drawn-numbers-title {
+                font-size: 1.1rem;
+            }
+            .game-started #connectionInfo {
+                position: static;
+                margin-bottom: 1rem;
+            }
+            .room-info {
+                padding: 0.4rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .number-cell {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+                margin: 2px;
+                border-width: 1px;
+            }
+            .last-number {
+                font-size: 2rem;
+            }
+            .drawn-number-item {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+                margin: 2px;
+            }
+            .btn {
+                padding: 6px 15px;
+                font-size: 0.8rem;
+            }
+            .input-group {
+                width: 100% !important;
+            }
+            .input-group .form-control {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h1 class="display-4 mb-4">Multiplayer Bingo</h1>
+            
+            <div id="connectionStatus" class="connection-status">Connection Status</div>
+            
+            <!-- Connection Information -->
+            <div class="game-info">
+                <div id="hostControls" style="display: none;">
+                    <div class="room-info">
+                        <span class="label">Room Code:</span>
+                        <span id="roomId" class="value"></span>
+                    </div>
+                    <div class="room-info">
+                        <span class="label">Players:</span>
+                        <span id="playerCount" class="value">1</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="connectionInfo" class="mb-4">
+                <div class="row justify-content-center">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <h3>Create New Room</h3>
+                                <button id="createRoom" class="btn btn-primary btn-lg">Create Room</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div id="joinControls">
+                                    <h3>Join Room</h3>
+                                    <div class="input-group mb-3 mx-auto">
+                                        <input type="text" id="joinRoomId" class="form-control" placeholder="Enter Room Code">
+                                        <button id="joinRoom" class="btn btn-success">Join</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="errorMessage" class="text-center"></div>
+            </div>
+
+            <button id="drawNumber" class="btn btn-primary btn-lg px-4 mb-4" style="display: none;">Draw Number</button>
+            <div class="last-number mb-4">
+                Last Drawn: <span id="lastDrawn">-</span>
+            </div>
+        </div>
+
+        <div class="bingo-card">
+            <div id="bingoGrid" class="d-flex flex-wrap justify-content-center">
+                <!-- Will be filled with JavaScript -->
+            </div>
+        </div>
+
+        <div class="drawn-numbers">
+            <div class="drawn-numbers-title">Last Drawn Numbers</div>
+            <div id="drawnNumbersList"></div>
+        </div>
+
+        <div class="draw-animation-container">
+            <div class="draw-animation"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bingoGrid = document.getElementById('bingoGrid');
+            const drawButton = document.getElementById('drawNumber');
+            const lastDrawnSpan = document.getElementById('lastDrawn');
+            const createRoomBtn = document.getElementById('createRoom');
+            const joinRoomBtn = document.getElementById('joinRoom');
+            const joinRoomInput = document.getElementById('joinRoomId');
+            const hostControls = document.getElementById('hostControls');
+            const joinControls = document.getElementById('joinControls');
+            const roomIdSpan = document.getElementById('roomId');
+            const playerCountSpan = document.getElementById('playerCount');
+            const errorMessage = document.getElementById('errorMessage');
+            const connectionStatus = document.getElementById('connectionStatus');
+
+            let numbers = [];
+            let drawnNumbers = new Set();
+            let peer = null;
+            let connections = [];
+            let isHost = false;
+            let currentConnection = null;
+
+            function generateRoomCode() {
+                // Simple method to shorten PeerJS ID
+                const timestamp = Date.now().toString(36); // Convert time to base 36 string
+                const random = Math.random().toString(36).substring(2, 5); // 3 character random string
+                return (timestamp.slice(-3) + random).toUpperCase(); // Last 6 characters
+            }
+
+            function showError(message) {
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = message;
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 5000);
+            }
+
+            function updateConnectionStatus(status, isConnected) {
+                connectionStatus.style.display = 'block';
+                connectionStatus.textContent = status;
+                connectionStatus.className = 'connection-status ' + (isConnected ? 'connected' : 'disconnected');
+            }
+
+            // Initialize PeerJS connection
+            function initializePeer(isCreatingRoom = false) {
+                if (peer) {
+                    peer.destroy();
+                }
+
+                if (isCreatingRoom) {
+                    // Use short code as PeerJS ID when creating room
+                    const roomCode = generateRoomCode();
+                    roomIdSpan.textContent = roomCode; // Show room code first
+                    
+                    peer = new Peer(roomCode, {
+                        debug: 2
+                    });
+                    
+                    peer.on('open', function(id) {
+                        console.log('Connection ID:', id);
+                        updateConnectionStatus('Room created and connection ready', true);
+                        hostControls.style.display = 'flex';
+                        hostControls.style.flexDirection = 'column';
+                        hostControls.style.alignItems = 'center';
+                    });
+                } else {
+                    // Use temporary ID when joining room
+                    peer = new Peer(null, {
+                        debug: 2
+                    });
+                }
+
+                peer.on('error', function(err) {
+                    console.error('Connection error:', err);
+                    updateConnectionStatus('Connection error: ' + err.type, false);
+                    showError('Connection error occurred. Please try again.');
+                });
+
+                peer.on('connection', function(conn) {
+                    handleNewConnection(conn);
+                });
+
+                peer.on('disconnected', function() {
+                    updateConnectionStatus('Connection lost', false);
+                });
+            }
+
+            // Create new room
+            createRoomBtn.addEventListener('click', function() {
+                isHost = true;
+                document.body.classList.add('game-started', 'is-host');
+                joinControls.style.display = 'none';
+                drawButton.style.display = 'block';
+                initializePeer(true);
+            });
+
+            // Join room
+            joinRoomBtn.addEventListener('click', function() {
+                const roomCode = joinRoomInput.value.trim().toUpperCase();
+                if (!roomCode) {
+                    showError('Please enter a room code');
+                    return;
+                }
+
+                if (roomCode.length !== 6) {
+                    showError('Room code must be 6 characters');
+                    return;
+                }
+
+                initializePeer(false);
+                
+                peer.on('open', function() {
+                    const conn = peer.connect(roomCode, {
+                        reliable: true
+                    });
+
+                    conn.on('open', function() {
+                        console.log('Connected to room');
+                        currentConnection = conn;
+                        document.body.classList.add('game-started');
+                        updateConnectionStatus('Connected to room', true);
+                        handleConnection(conn);
+                    });
+
+                    conn.on('error', function(err) {
+                        showError('Connection error: ' + err);
+                        updateConnectionStatus('Connection error', false);
+                    });
+
+                    conn.on('close', function() {
+                        updateConnectionStatus('Connection closed', false);
+                    });
+                });
+            });
+
+            // Handle new connection (for Host)
+            function handleNewConnection(conn) {
+                connections.push(conn);
+                playerCountSpan.textContent = connections.length + 1;
+                updateConnectionStatus('New player connected', true);
+
+                conn.on('open', function() {
+                    console.log('New player connected');
+                    // Send existing drawn numbers to new player
+                    drawnNumbers.forEach(number => {
+                        conn.send({
+                            type: 'drawnNumber',
+                            number: number
+                        });
+                    });
+                });
+
+                conn.on('close', function() {
+                    const index = connections.indexOf(conn);
+                    if (index > -1) {
+                        connections.splice(index, 1);
+                        playerCountSpan.textContent = connections.length + 1;
+                    }
+                    updateConnectionStatus('A player left', true);
+                });
+
+                handleConnection(conn);
+            }
+
+            // Connection operations
+            function handleConnection(conn) {
+                conn.on('data', function(data) {
+                    if (data.type === 'drawnNumber') {
+                        const number = data.number;
+                        const startTime = data.startTime;
+                        showNumberDrawAnimation(number, startTime, true);
+                    }
+                });
+            }
+
+            // Show number drawing animation
+            async function showNumberDrawAnimation(finalNumber, startTime, isReceived = false) {
+                const animationContainer = document.querySelector('.draw-animation-container');
+                const animationElement = document.querySelector('.draw-animation');
+                
+                if (!isReceived) {
+                    drawButton.disabled = true;
+                }
+                
+                animationContainer.style.display = 'flex';
+
+                // Animasyon zamanlaması
+                const now = Date.now();
+                const delay = startTime - now;
+                
+                if (delay > 0) {
+                    // Wait until start time
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+
+                const animationDuration = 300; // 3 seconds
+                const endTime = startTime + animationDuration;
+
+                function updateAnimation() {
+                    const currentTime = Date.now();
+                    const elapsed = currentTime - startTime;
+
+                    if (currentTime < endTime) {
+                        // Show random number (from undrawn numbers)
+                        let tempNumber;
+                        do {
+                            tempNumber = Math.floor(Math.random() * 90) + 1;
+                        } while (drawnNumbers.has(tempNumber));
+
+                        animationElement.textContent = tempNumber;
+                        requestAnimationFrame(updateAnimation);
+                    } else {
+                        // Show final number
+                        animationElement.textContent = finalNumber;
+                        animationElement.classList.add('final-number');
+
+                        // End animation
+                        setTimeout(() => {
+                            animationContainer.style.display = 'none';
+                            animationElement.classList.remove('final-number');
+                            
+                            // Save and display number
+                            drawnNumbers.add(finalNumber);
+                            lastDrawnSpan.textContent = finalNumber;
+                            renderBingoCard();
+                            renderDrawnNumbers();
+
+                            if (!isReceived) {
+                                drawButton.disabled = false;
+                            }
+                        }, 1000);
+                    }
+                }
+
+                updateAnimation();
+            }
+
+            // Generate random bingo card
+            function generateBingoCard() {
+                numbers = [];
+                for (let row = 0; row < 3; row++) {
+                    let availableColumns = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+                    let selectedColumns = [];
+                    
+                    // Select 5 random columns for each row
+                    for (let i = 0; i < 5; i++) {
+                        const randomIndex = Math.floor(Math.random() * availableColumns.length);
+                        selectedColumns.push(availableColumns[randomIndex]);
+                        availableColumns.splice(randomIndex, 1);
+                    }
+                    
+                    // Sort columns so numbers go from left to right properly
+                    selectedColumns.sort((a, b) => a - b);
+                    
+                    let rowNumbers = new Array(9).fill(null); // 9 element empty array
+                    
+                    // Generate number for selected columns
+                    selectedColumns.forEach(col => {
+                        let min = col * 10;
+                        let max = col === 8 ? 90 : (col + 1) * 10 - 1;
+                        let number = Math.floor(Math.random() * (max - min + 1)) + min;
+                        rowNumbers[col] = number;
+                    });
+                    
+                    numbers.push(rowNumbers);
+                }
+                renderBingoCard();
+            }
+
+            // Draw bingo card on screen
+            function renderBingoCard() {
+                bingoGrid.innerHTML = '';
+                numbers.forEach(row => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'd-flex justify-content-center w-100';
+                    
+                    row.forEach((number, index) => {
+                        const cell = document.createElement('div');
+                        cell.className = 'number-cell';
+                        
+                        if (number !== null) {
+                            cell.textContent = number;
+                            if (drawnNumbers.has(number)) {
+                                cell.classList.add('marked');
+                            }
+                        } else {
+                            cell.style.backgroundColor = '#f8f9fa';
+                            cell.style.border = '2px dashed #dee2e6';
+                        }
+                        
+                        rowDiv.appendChild(cell);
+                    });
+                    
+                    bingoGrid.appendChild(rowDiv);
+                });
+            }
+
+            function renderDrawnNumbers() {
+                const drawnNumbersList = document.getElementById('drawnNumbersList');
+                drawnNumbersList.innerHTML = '';
+                
+                // Son 15 sayıyı göster
+                Array.from(drawnNumbers)
+                    .slice(-15)
+                    .reverse()
+                    .forEach(number => {
+                        const numberDiv = document.createElement('div');
+                        numberDiv.className = 'drawn-number-item';
+                        numberDiv.textContent = number;
+                        drawnNumbersList.appendChild(numberDiv);
+                    });
+            }
+
+            // Drawing number operation
+            drawButton.addEventListener('click', async function() {
+                if (!isHost) return;
+                
+                if (drawnNumbers.size >= 90) {
+                    alert('All numbers have been drawn!');
+                    return;
+                }
+
+                drawButton.disabled = true;
+
+                // Rastgele sayı seç
+                let finalNumber;
+                do {
+                    finalNumber = Math.floor(Math.random() * 90) + 1;
+                } while (drawnNumbers.has(finalNumber));
+
+                // Set animation start time (500ms later)
+                const startTime = Date.now() + 500;
+
+                // First send to other players
+                connections.forEach(conn => {
+                    if (conn.open) {
+                        conn.send({
+                            type: 'drawnNumber',
+                            number: finalNumber,
+                            startTime: startTime
+                        });
+                    }
+                });
+
+                // Then start our own animation
+                showNumberDrawAnimation(finalNumber, startTime, false);
+            });
+
+            // Start game
+            generateBingoCard();
+            renderDrawnNumbers();
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
