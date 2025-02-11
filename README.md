@@ -58,7 +58,7 @@ Try it out: [Multiplayer Bingo Demo](https://bilgeozan.com/bingo)
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/multiplayer-bingo.git
+git clone https://github.com/Nrkozan/P2P-Real-time-Game-Multiplayer-Bingo.git
 ```
 
 2. Open `bingo.html` in a modern web browser
